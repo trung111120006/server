@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- ===== PHẦN 1: MPD ROOT ELEMENT ===== -->
+<MPD xmlns="urn:mpeg:dash:schema:mpd:2011"
+     type="static"
+     mediaPresentationDuration="PT30S"
+     minBufferTime="PT2S"
+     profiles="urn:mpeg:dash:profile:isoff-on-demand:2011">
+  
+  <!-- 
+  GIẢI THÍCH:
+  - xmlns: Namespace của DASH MPD schema
+  - type="static": Nội dung cố định, không thay đổi (khác với "dynamic" cho live stream)
+  - mediaPresentationDuration="PT30S": Tổng thời lượng là 30 giây (P=Period, T=Time, S=Seconds)
+  - minBufferTime="PT2S": Client cần buffer tối thiểu 2 giây trước khi phát
+  - profiles: Sử dụng profile on-demand của DASH
+  -->
+
+  <!-- ===== PHẦN 2: PERIOD - Khoảng thời gian của presentation ===== -->
+  <Period id="0" start="PT0S">
+    <!-- 
+    GIẢI THÍCH:
+    - Period: Một đoạn thời gian liên tục trong presentation
+    - id="0": ID duy nhất của period này
+    - start="PT0S": Bắt đầu từ giây thứ 0
+    - Có thể có nhiều Period nếu nội dung thay đổi (ví dụ: quảng cáo, chương khác)
+    -->
+
+    <!-- ===== PHẦN 3: ADAPTATION SET - Nhóm các luồng dữ liệu thay thế ===== -->
+    <AdaptationSet id="1" 
+                   contentType="application" 
+                   mimeType="application/octet-stream">
+      <!-- 
+      GIẢI THÍCH:
+      - AdaptationSet: Nhóm các Representation có thể thay thế cho nhau
+      - id="1": ID duy nhất
+      - contentType="application": Loại nội dung (video/audio/application)
+      - mimeType="application/octet-stream": Kiểu MIME của dữ liệu (binary data)
+      
+      VÍ DỤ: Thường có nhiều AdaptationSet cho:
+        - AdaptationSet id="1": Video chất lượng khác nhau
+        - AdaptationSet id="2": Audio ngôn ngữ khác nhau
+        - AdaptationSet id="3": Subtitle
+      -->
+
+      <!-- ===== PHẦN 4: REPRESENTATION - Một phiên bản cụ thể của nội dung ===== -->
+      <Representation id="pointcloud_1" 
+                      bandwidth="500000">
+        <!-- 
+        GIẢI THÍCH:
+        - Representation: Một phiên bản cụ thể (ví dụ: 720p, 1080p)
+        - id="pointcloud_1": ID duy nhất của representation
+        - bandwidth="500000": Băng thông cần thiết (bits/second) = 500 Kbps
+        
+        VÍ DỤ: Trong một AdaptationSet có thể có nhiều Representation:
+          <Representation id="low" bandwidth="250000">   <!-- 250 Kbps -->
+          <Representation id="medium" bandwidth="500000"> <!-- 500 Kbps -->
+          <Representation id="high" bandwidth="1000000">  <!-- 1 Mbps -->
+        Client sẽ chọn Representation phù hợp dựa vào băng thông hiện tại
+        -->
+
+        <!-- ===== PHẦN 5: BASE URL - Đường dẫn gốc ===== -->
+        <BaseURL>encoded_output/</BaseURL>
+        <!-- 
+        GIẢI THÍCH:
+        - BaseURL: Đường dẫn thư mục chứa các segment
+        - URL cuối cùng sẽ là: BaseURL + media URL
+        - Ví dụ: encoded_output/ + longdress_vox10_1051.bin
+                 = encoded_output/longdress_vox10_1051.bin
+        
+        CÓ THỂ LÀ:
+        - Relative: encoded_output/
+        - Absolute: http://example.com/path/encoded_output/
+        -->
+
+        <!-- ===== CÁCH 1: SEGMENT TEMPLATE (Dùng pattern) ===== -->
+        <SegmentTemplate media="longdress_vox10_$Number$.bin"
+                         startNumber="1051"
+                         duration="1"
+                         timescale="1">
+          <!-- 
+          GIẢI THÍCH:
+          - SegmentTemplate: Định nghĩa pattern để sinh tên file tự động
+          - media="longdress_vox10_$Number$.bin": Pattern với biến $Number$
+          - startNumber="1051": Bắt đầu từ số 1051
+          - duration="1": Mỗi segment dài 1 đơn vị thời gian
+          - timescale="1": 1 đơn vị = 1 giây (nếu timescale="1000" thì 1 đơn vị = 1ms)
+          
+          KẾT QUẢ:
+          - File 1: longdress_vox10_1051.bin (0-1s)
+          - File 2: longdress_vox10_1052.bin (1-2s)
+          - File 3: longdress_vox10_1053.bin (2-3s)
+          ...
+          
+          ƯU ĐIỂM: Ngắn gọn, không cần liệt kê từng file
+          NHƯỢC ĐIỂM: Chỉ dùng được nếu tên file theo pattern cố định
+          -->
+          
+          <!-- Timeline có thể thêm nếu duration không đều -->
+          <SegmentTimeline>
+            <S t="0" d="1" r="29"/>
+            <!-- 
+            - S: Segment
+            - t="0": Bắt đầu tại thời điểm 0
+            - d="1": Duration = 1 giây
+            - r="29": Repeat 29 lần (tổng 30 segment)
+            -->
+          </SegmentTimeline>
+        </SegmentTemplate>
+
+        <!-- ===== CÁCH 2: SEGMENT LIST (Liệt kê cụ thể) ===== -->
+        <SegmentList duration="1" timescale="1">
+          <!-- 
+          GIẢI THÍCH:
+          - SegmentList: Liệt kê rõ ràng từng segment
+          - duration="1": Mỗi segment mặc định dài 1 giây
+          - timescale="1": 1 đơn vị = 1 giây
+          
+          ƯU ĐIỂM: 
+          - Linh hoạt, tên file không cần theo pattern
+          - Mỗi segment có thể có duration khác nhau
+          NHƯỢC ĐIỂM: 
+          - File MPD dài nếu có nhiều segment
+          -->
+          
+          <SegmentURL media="longdress_vox10_1051.bin"/>
+          <SegmentURL media="longdress_vox10_1052.bin"/>
+          <SegmentURL media="longdress_vox10_1053.bin"/>
+          <SegmentURL media="longdress_vox10_1054.bin"/>
+          <!-- ... thêm các file khác ... -->
+          
+          <!-- Nếu duration khác nhau, có thể chỉ định cụ thể: -->
+          <!-- <SegmentURL media="file1.bin" duration="2"/> -->
+          <!-- <SegmentURL media="file2.bin" duration="1.5"/> -->
+        </SegmentList>
+        
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>
+
+<!-- 
+===== TÓM TẮT CẤU TRÚC =====
+
+MPD (Media Presentation Description)
+└── Period (Khoảng thời gian)
+    └── AdaptationSet (Nhóm luồng có thể thay thế)
+        └── Representation (Một phiên bản cụ thể - quality level)
+            ├── BaseURL (Đường dẫn gốc)
+            └── SegmentTemplate HOẶC SegmentList (Cách tổ chức file)
+
+===== FLOW KHI CLIENT TẢI =====
+
+1. Client tải file manifest.mpd
+2. Parse MPD, đọc được:
+   - Tổng duration: 30s
+   - BaseURL: encoded_output/
+   - Danh sách segment: longdress_vox10_1051.bin, 1052.bin, ...
+3. Client tải từng segment theo thứ tự:
+   - GET http://server/encoded_output/longdress_vox10_1051.bin
+   - GET http://server/encoded_output/longdress_vox10_1052.bin
+   - ...
+4. Client buffer và xử lý dữ liệu
+
+-->
